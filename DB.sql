@@ -76,7 +76,7 @@ CREATE TABLE Usuario (
     nome_usuario varchar(255) UNIQUE,
     senha varchar(255),
     tipo_usuario enum('Aluno', 'Professor', 'Administrador'),
-    data_criacao datetime default now(),
+    data_criacao datetime default now()
 );
 
 CREATE TABLE Administrador (
