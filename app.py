@@ -24,7 +24,8 @@ def get_alunos():
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)  # Retorna resultados como dicionários
-        cursor.execute("SELECT A.nome, A.genero, A.serie, A.matricula, U.status FROM Aluno A JOIN Usuario U ON A.fk_Usuario_id_usuario = U.id_usuario")
+        cursor.execute(
+            "SELECT A.id_aluno, A.nome, A.genero, A.serie, A.matricula, U.status FROM Aluno A JOIN Usuario U ON A.fk_Usuario_id_usuario = U.id_usuario")
         resultados = cursor.fetchall()
         return jsonify(resultados), 200  # Retorna os dados como JSON
     except mysql.connector.Error as err:
@@ -201,12 +202,12 @@ def delete_aluno(id_aluno):
 def cadastrar_aluno_turma():
     try:
         data = request.get_json()
-        matricula = data['matricula']
+        id_aluno = data['matricula']
         id_turma = data['id_turma']
         
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("INSERT INTO Nota (nota, fk_Aluno_id_aluno, fk_Turma_id_turma) VALUES (%s, %s, %s)", (0, matricula, id_turma))
+        cursor.execute("INSERT INTO Nota (nota, fk_Aluno_id_aluno, fk_Turma_id_turma) VALUES (%s, %s, %s)", (0, id_aluno, id_turma))
         conn.commit()
         cursor.close()
         conn.close()
