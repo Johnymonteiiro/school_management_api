@@ -24,7 +24,8 @@ def get_alunos():
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)  # Retorna resultados como dicionários
-        cursor.execute("SELECT A.nome, A.genero, A.serie, A.matricula, U.status FROM Aluno A JOIN Usuario U ON A.fk_Usuario_id_usuario = U.id_usuario")
+        cursor.execute(
+            "SELECT A.id_aluno, A.nome, A.genero, A.serie, A.matricula, U.status FROM Aluno A JOIN Usuario U ON A.fk_Usuario_id_usuario = U.id_usuario")
         resultados = cursor.fetchall()
         return jsonify(resultados), 200  # Retorna os dados como JSON
     except mysql.connector.Error as err:
@@ -453,12 +454,12 @@ def get_professores():
         conn.close()
 
 # Rota para buscar um professor por CODIGO
-@app.route('/professores/<string:codigo>', methods=['GET'])
-def get_professor(codigo):
+@app.route('/professores/<int:id_professor>', methods=['GET'])
+def get_professor(id_professor):
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM Professor WHERE codigo = %s", (codigo,))
+        cursor.execute("SELECT * FROM Professor WHERE codigo = %s", (id_professor,))
         professor = cursor.fetchone()
         if professor:
             return jsonify(professor), 200
@@ -471,8 +472,8 @@ def get_professor(codigo):
         conn.close()
 
 # Rota para atualizar informações de um professor
-@app.route('/professores/<string:codigo>', methods=['PUT'])
-def update_professor(codigo):
+@app.route('/professores/<int:id_professor>', methods=['PUT'])
+def update_professor(id_professor):
     try:
         data = request.json
         nome = data.get('nome')
@@ -490,9 +491,9 @@ def update_professor(codigo):
             """
             UPDATE Professor 
             SET nome = %s, genero = %s, cpf = %s, email = %s, telefone = %s, especialidade = %s, endereco = %s, status = %s
-            WHERE codigo = %s
+            WHERE id_professor = %s
             """,
-            (nome, genero, cpf, email, telefone, especialidade, endereco, status, codigo)
+            (nome, genero, cpf, email, telefone, especialidade, endereco, status, id_professor)
         )
         conn.commit()
 
@@ -507,18 +508,18 @@ def update_professor(codigo):
         conn.close()
 
 # 5. Rota para remover um professor (DELETE)
-@app.route('/professores/<string:codigo>', methods=['DELETE'])
-def delete_professor(codigo):
+@app.route('/professores/<int:id_professor>', methods=['DELETE'])
+def delete_professor(id_professor):
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT fk_Usuario_id_usuario AS id_usuario FROM Professor WHERE codigo = %s", (codigo,))
+        cursor.execute("SELECT fk_Usuario_id_usuario AS id_usuario FROM Professor WHERE codigo = %s", (id_professor,))
         
         usuario = cursor.fetchone()  # Armazena o resultado
         if usuario:
             id_usuario = int(usuario['id_usuario'])
             cursor = conn.cursor()
-            cursor.execute("DELETE FROM Professor WHERE codigo = %s", (codigo,))
+            cursor.execute("DELETE FROM Professor WHERE codigo = %s", (id_professor,))
             cursor.execute("DELETE FROM Usuario WHERE id_usuario = %s", (id_usuario,))
             conn.commit()
             return jsonify({"message": "Professor deletado com sucesso!"}), 200
@@ -612,4 +613,4 @@ def protected():
     return jsonify({"message": "Acesso permitido! Você está autenticado."}), 200
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='127.0.0.1', port=5001, debug=True)
