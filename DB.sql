@@ -169,3 +169,24 @@ ALTER TABLE Nota ADD CONSTRAINT FK_Nota_2
     FOREIGN KEY (fk_Turma_id_turma)
     REFERENCES Turma (id_turma)
     ON DELETE CASCADE;
+
+
+--------------------------------------------------------------------------------------
+SELECT 
+    Aluno.matricula, 
+    Aluno.nome, 
+    Aluno.serie, 
+    AVG(Nota.nota) AS media, 
+    COUNT(Aula.id_aula) AS total_aula, 
+    COUNT(CASE WHEN Presenca.status = 'Presente' THEN Presenca.id_presenca END) AS total_presenca,
+    COUNT(Aula.id_aula) - COUNT(CASE WHEN Presenca.status = 'Presente' THEN Presenca.id_presenca END) AS total_falta,
+    JSON_ARRAYAGG(Ocorrencia.descricao) AS ocorrencias, 
+    JSON_ARRAYAGG(Turma.nome) AS turmas
+FROM Aluno
+LEFT JOIN Nota ON Aluno.id_aluno = Nota.fk_Aluno_id_aluno
+LEFT JOIN Presenca ON Aluno.id_aluno = Presenca.fk_Aluno_id_aluno
+LEFT JOIN Aula ON Presenca.fk_Aula_id_aula = Aula.id_aula
+LEFT JOIN Historico_Ocorrencia ON Aluno.id_aluno = Historico_Ocorrencia.fk_Aluno_id_aluno
+LEFT JOIN Ocorrencia ON Historico_Ocorrencia.fk_Ocorrencia_id_ocorrencia = Ocorrencia.id_ocorrencia
+LEFT JOIN Turma ON Nota.fk_Turma_id_turma = Turma.id_turma
+GROUP BY Aluno.id_aluno;    
