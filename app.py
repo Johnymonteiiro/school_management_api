@@ -25,7 +25,7 @@ def get_alunos():
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)  # Retorna resultados como dicionários
         cursor.execute(
-            "SELECT A.id_aluno, A.nome, A.genero, A.serie, A.matricula, U.status FROM Aluno A JOIN Usuario U ON A.fk_Usuario_id_usuario = U.id_usuario")
+            "SELECT id_aluno, nome, genero, serie, matricula, status FROM Aluno")
         resultados = cursor.fetchall()
         return jsonify(resultados), 200  # Retorna os dados como JSON
     except mysql.connector.Error as err:
@@ -109,15 +109,15 @@ def add_aluno():
 
         # Insere o usuário na tabela Usuario
         cursor = conn.cursor()
-        cursor.execute("INSERT INTO Usuario (nome_usuario, senha, tipo_usuario, status) VALUES (%s, %s, %s, %s)", 
-                    (nome_usuario, senha_codificada, "Aluno", "Ativo"))
+        cursor.execute("INSERT INTO Usuario (nome_usuario, senha, tipo_usuario) VALUES (%s, %s, %s)", 
+                    (nome_usuario, senha_codificada, "Aluno"))
 
         # Obtém o ID do usuário recém-inserido
         id_usuario = cursor.lastrowid
 
         # Insere o aluno na tabela Aluno
-        cursor.execute("INSERT INTO Aluno (nome, data_nascimento, genero, cpf, serie, matricula, endereco, nome_responsavel, telefone_responsavel, fk_Usuario_id_usuario) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", 
-                       (nome, data_nascimento, genero, cpf, serie, matricula, endereco, nome_responsavel, telefone_responsavel, id_usuario))
+        cursor.execute("INSERT INTO Aluno (nome, data_nascimento, genero, cpf, serie, matricula, endereco, nome_responsavel, telefone_responsavel, status, fk_Usuario_id_usuario) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", 
+                       (nome, data_nascimento, genero, cpf, serie, matricula, endereco, nome_responsavel, telefone_responsavel, "Ativo", id_usuario))
         
         conn.commit()  # Confirma a transação
         return jsonify({"message": "Aluno adicionado com sucesso!", "Matricula": matricula}), 201
@@ -157,6 +157,7 @@ def update_aluno(id_aluno):
         cpf = data.get('cpf')
         endereco = data.get('endereco')
         nome_responsavel = data.get('nome_responsavel')
+        status = data.get('status')
         telefone_responsavel = data.get('telefone_responsavel')
 
         conn = get_db_connection()
@@ -166,7 +167,7 @@ def update_aluno(id_aluno):
         if resultado:
             conn = get_db_connection()
             cursor = conn.cursor()
-            cursor.execute("UPDATE Aluno SET nome = %s, data_nascimento = %s, genero = %s, cpf = %s, endereco = %s, nome_responsavel = %s, telefone_responsavel = %s WHERE id_aluno = %s", (nome, data_nascimento, genero, cpf, endereco, nome_responsavel, telefone_responsavel, id_aluno))
+            cursor.execute("UPDATE Aluno SET nome = %s, data_nascimento = %s, genero = %s, cpf = %s, endereco = %s, nome_responsavel = %s, telefone_responsavel = %s, status = %s, WHERE id_aluno = %s", (nome, data_nascimento, genero, cpf, endereco, nome_responsavel, telefone_responsavel, status, id_aluno))
             conn.commit()
             return jsonify({"message": "Aluno atualizado com sucesso!"}), 200
         else:
@@ -238,8 +239,8 @@ def add_professor():
 
         # Insere o usuário na tabela Usuario
         cursor = conn.cursor()
-        cursor.execute("INSERT INTO Usuario (nome_usuario, senha, tipo_usuario, status) VALUES (%s, %s, %s, %s)", 
-                    (nome_usuario, senha_codificada, "Professor", "Ativo"))
+        cursor.execute("INSERT INTO Usuario (nome_usuario, senha, tipo_usuario) VALUES (%s, %s, %s)", 
+                    (nome_usuario, senha_codificada, "Professor"))
 
         # Obtém o ID do usuário recém-inserido
         id_usuario = cursor.lastrowid
@@ -278,7 +279,7 @@ def get_professor(id_professor):
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM Professor WHERE codigo = %s", (id_professor,))
+        cursor.execute("SELECT * FROM Professor WHERE id_professor = %s", (id_professor,))
         professor = cursor.fetchone()
         if professor:
             return jsonify(professor), 200
@@ -341,7 +342,7 @@ def delete_professor(id_professor):
         if usuario:
             id_usuario = int(usuario['id_usuario'])
             cursor = conn.cursor()
-            cursor.execute("DELETE FROM Professor WHERE codigo = %s", (id_professor,))
+            cursor.execute("DELETE FROM Professor WHERE id_professor = %s", (id_professor,))
             cursor.execute("DELETE FROM Usuario WHERE id_usuario = %s", (id_usuario,))
             conn.commit()
             return jsonify({"message": "Professor deletado com sucesso!"}), 200
@@ -468,7 +469,7 @@ def deletar_disciplina(id_disciplina):
 def inserir_turma():
     try:
         data = request.get_json()
-        nome = data['nome']
+        nome = gerar_codigo("TURMA", "Turma")
         capacidade = data['capacidade']
         serie = data['serie']
         ano_letivo = data['ano_letivo']
@@ -1004,8 +1005,8 @@ def cadastrar_administrador():
 
         # Insere o usuário na tabela Usuario
         cursor = conn.cursor()
-        cursor.execute("INSERT INTO Usuario (nome_usuario, senha, tipo_usuario, status) VALUES (%s, %s, %s, %s)", 
-                    (nome_usuario, senha_codificada, "Administrador", "Ativo"))
+        cursor.execute("INSERT INTO Usuario (nome_usuario, senha, tipo_usuario) VALUES (%s, %s, %s)", 
+                    (nome_usuario, senha_codificada, "Administrador"))
 
         id_usuario = cursor.lastrowid
 
@@ -1099,6 +1100,10 @@ def obter_administrador(id_administrador):
         return jsonify({'error': str(e)}), 500
 
     
+
+
+
+
 # Inserção de Nota
 @app.route('/notas', methods=['POST'])
 def cadastrar_nota():

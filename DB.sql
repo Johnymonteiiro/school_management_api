@@ -14,6 +14,7 @@ CREATE TABLE Aluno (
     endereco varchar(255),
     nome_responsavel varchar(255),
     telefone_responsavel varchar(20),
+    status enum('Ativo', 'Inativo'),
     fk_Usuario_id_usuario int UNIQUE
 );
 
@@ -23,7 +24,7 @@ CREATE TABLE Professor (
     genero enum('Masculino', 'Femenino'),
     cpf varchar(14) UNIQUE,
     codigo varchar(50) UNIQUE,
-    email varchar(255),
+    email varchar(255) UNIQUE,
     telefone varchar(20),
     especialidade varchar(255),
     endereco varchar(255),
@@ -76,7 +77,6 @@ CREATE TABLE Usuario (
     senha varchar(255),
     tipo_usuario enum('Aluno', 'Professor', 'Administrador'),
     data_criacao datetime default now(),
-    status enum('Ativo', 'Inativo')
 );
 
 CREATE TABLE Administrador (
