@@ -357,11 +357,11 @@ def cadastrar_aula():
         data_aula = data['data_aula']
         hora_inicio = data['hora_inicio']
         hora_fim = data['hora_fim']
-        conteudo = data['conteudo']
+        dados = data['dados']
         id_turma = data['id_turma']
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute("INSERT INTO Aula (data_aula, hora_inicio, hora_fim, conteudo, fk_Turma_id_turma) VALUES (%s, %s, %s, %s, %s)", (data_aula, hora_inicio, hora_fim, conteudo, id_turma))
+        cur.execute("INSERT INTO Aula (data_aula, hora_inicio, hora_fim, dados, fk_Turma_id_turma) VALUES (%s, %s, %s, %s, %s)", (data_aula, hora_inicio, hora_fim, dados, id_turma))
         conn.commit()
         cur.close()
         conn.close()

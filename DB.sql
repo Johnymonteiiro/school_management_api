@@ -44,7 +44,7 @@ CREATE TABLE Aula (
     data_aula date,
     hora_inicio time,
     hora_fim time,
-    conteudo text,
+    dados text,
     fk_Turma_id_turma int
 );
 
