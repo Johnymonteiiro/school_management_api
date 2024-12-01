@@ -160,10 +160,14 @@ def update_aluno(id_aluno):
         telefone_responsavel = data.get('telefone_responsavel')
 
         conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("UPDATE Aluno SET nome = %s, data_nascimento = %s, genero = %s, cpf = %s, endereco = %s, nome_responsavel = %s, telefone_responsavel = %s WHERE id_aluno = %s", (nome, data_nascimento, genero, cpf, endereco, nome_responsavel, telefone_responsavel, id_aluno))
-        conn.commit()
-        if cursor.rowcount > 0:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM Aluno WHERE id_aluno = %s", (id_aluno,))
+        resultado = cursor.fetchone()
+        if resultado:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("UPDATE Aluno SET nome = %s, data_nascimento = %s, genero = %s, cpf = %s, endereco = %s, nome_responsavel = %s, telefone_responsavel = %s WHERE id_aluno = %s", (nome, data_nascimento, genero, cpf, endereco, nome_responsavel, telefone_responsavel, id_aluno))
+            conn.commit()
             return jsonify({"message": "Aluno atualizado com sucesso!"}), 200
         else:
             return jsonify({"message": "Aluno não encontrado"}), 404
