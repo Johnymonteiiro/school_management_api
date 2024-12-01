@@ -1,12 +1,12 @@
 //CREATE
 
-python -m venv apienv
+python -m venv env
 
 //RUN:
-apienv\Scripts\activate
+env\Scripts\activate
 
 //STOP
 deactivate
 
-
+python.exe -m pip install --upgrade pip
 pip install -r requirement.txt
