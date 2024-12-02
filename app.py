@@ -1598,6 +1598,50 @@ def detalhes_aluno(id_aluno):
         return jsonify({'error': str(e)}), 500
 
 
+from flask import Flask, jsonify
+import mysql.connector
+from mysql.connector import Error
+
+app = Flask(__name__)
+
+@app.route('/drop-tables', methods=['POST'])
+def drop_tables():
+    try:
+        # Conexão com o banco de dados
+        connection = mysql.connector.connect(
+            host='localhost',
+            user='root',
+            password='master',
+            database='school'
+        )
+        cursor = connection.cursor()
+
+        # Desabilitar verificações de chave estrangeira
+        cursor.execute("SET FOREIGN_KEY_CHECKS = 0;")
+        connection.commit()
+
+        # Obter todas as tabelas do banco de dados
+        cursor.execute("SHOW TABLES;")
+        tables = cursor.fetchall()
+
+        # Apagar cada tabela
+        for (table_name,) in tables:
+            cursor.execute(f"DROP TABLE IF EXISTS {table_name};")
+            connection.commit()
+
+        # Reativar verificações de chave estrangeira
+        cursor.execute("SET FOREIGN_KEY_CHECKS = 1;")
+        connection.commit()
+
+        return jsonify({'message': 'Todas as tabelas foram eliminadas com sucesso!'}), 200
+
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
 
 
 
