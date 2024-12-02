@@ -1598,11 +1598,8 @@ def detalhes_aluno(id_aluno):
         return jsonify({'error': str(e)}), 500
 
 
-from flask import Flask, jsonify
-import mysql.connector
-from mysql.connector import Error
 
-app = Flask(__name__)
+
 
 @app.route('/drop-tables', methods=['POST'])
 def drop_tables():
