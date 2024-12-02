@@ -1302,17 +1302,23 @@ def obter_usuario(id_usuario):
 def cadastrar_aluno_turma():
     try:
         data = request.get_json()
-        id_aluno = data['matricula']
+        id_aluno = data['id_aluno']
         id_turma = data['id_turma']
         
         conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("INSERT INTO Nota (nota, fk_Aluno_id_aluno, fk_Turma_id_turma) VALUES (%s, %s, %s)", (0, id_aluno, id_turma))
-        conn.commit()
-        cursor.close()
-        conn.close()
-        
-        return jsonify({'mensagem': 'Aluno cadastrado na turma com sucesso!'}), 201
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM Nota WHERE fk_Aluno_id_aluno = %s and fk_Turma_id_turma = %s", (id_aluno, id_turma))
+        res = cursor.fetchone()
+
+        if not res:
+            cursor = conn.cursor()
+            cursor.execute("INSERT INTO Nota (nota, fk_Aluno_id_aluno, fk_Turma_id_turma) VALUES (%s, %s, %s)", (0, id_aluno, id_turma))
+            conn.commit()
+            cursor.close()
+            conn.close()
+            return jsonify({'mensagem': 'Aluno cadastrado na turma com sucesso!'}), 201
+        else:
+            return jsonify({'mensagem': 'Aluno já está cadastrado na turma'}), 205
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -1347,13 +1353,22 @@ def registrar_presenca():
         id_aula = data['id_aula']
         
         conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("INSERT INTO Presenca (status, hora_chegada, fk_Aluno_id_aluno, fk_Aula_id_aula) VALUES (%s, %s, %s, %s)", (status, hora_chegada, id_aluno, id_aula))
-        conn.commit()
-        cursor.close()
-        conn.close()
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM Presenca WHERE fk_Aluno_id_aluno = %s and fk_Aula_id_aula = %s", (id_aluno, id_aula))
+        res = cursor.fetchone()
+
+        if not res:
+            cursor = conn.cursor()
+            cursor.execute("INSERT INTO Presenca (status, hora_chegada, fk_Aluno_id_aluno, fk_Aula_id_aula) VALUES (%s, %s, %s, %s)", ("Presente", hora_chegada, id_aluno, id_aula))
+            conn.commit()
+            cursor.close()
+            conn.close()
         
-        return jsonify({'mensagem': 'Presença registrada com sucesso!'}), 201
+            return jsonify({'mensagem': 'Presença registrada com sucesso!'}), 201
+        else:
+            return jsonify({'mensagem': 'Aluno já registrou presenca'}), 205
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -1458,10 +1473,129 @@ def cadastrar_aula():
 
 
 
+@app.route('/alunos_por_genero/<int:id_turma>', methods=['GET'])
+def alunos_por_genero(id_turma):
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        query = """
+            SELECT 
+                a.genero, 
+                COUNT(a.id_aluno) AS total_alunos, 
+                ROUND((COUNT(a.id_aluno) * 100.0 / (SELECT COUNT(*) FROM Nota n2 WHERE n2.fk_Turma_id_turma = %s)), 2) AS porcentagem
+            FROM 
+                Aluno a
+            JOIN 
+                Nota n ON a.id_aluno = n.fk_Aluno_id_aluno
+            WHERE 
+                n.fk_Turma_id_turma = %s
+            GROUP BY 
+                a.genero
+        """
+        cur.execute(query, (id_turma, id_turma))
+        resultados = cur.fetchall()
+        cur.close()
+        conn.close()
+        return jsonify(resultados), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
+@app.route('/notas_aluno/<int:id_aluno>/<int:semestre>/<int:ano_letivo>', methods=['GET'])
+def notas_aluno(id_aluno, semestre, ano_letivo):
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        query = """
+            SELECT 
+                d.nome AS disciplina,
+                n.nota
+            FROM 
+                Nota n
+            JOIN 
+                Turma t ON n.fk_Turma_id_turma = t.id_turma
+            JOIN 
+                Disciplina d ON t.fk_Disciplina_id_disciplina = d.id_disciplina
+            WHERE 
+                n.fk_Aluno_id_aluno = %s
+                AND t.semestre = %s
+                AND t.ano_letivo = %s
+        """
+        cur.execute(query, (id_aluno, semestre, ano_letivo))
+        resultados = cur.fetchall()
+        cur.close()
+        conn.close()
+        return jsonify(resultados), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
+@app.route('/detalhes_turmas', methods=['GET'])
+def detalhes_turmas():
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(dictionary=True)  # dictionary=True para resultados como dicionários
+        query = """
+            SELECT 
+                Turma.nome AS nome_turma,
+                COUNT(DISTINCT Nota.fk_Aluno_id_aluno) AS total_alunos
+            FROM 
+                Turma
+            LEFT JOIN 
+                Nota ON Turma.id_turma = Nota.fk_Turma_id_turma
+            GROUP BY 
+                Turma.id_turma, Turma.nome
+        """
+        cur.execute(query)
+        resultados = cur.fetchall()
+        cur.close()
+        conn.close()
+
+        if not resultados:
+            return jsonify({'error': 'Nenhuma turma encontrada'}), 404
+        
+        return jsonify(resultados), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/detalhes_aluno/<int:id_aluno>', methods=['GET'])
+def detalhes_aluno(id_aluno):
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(dictionary=True)  # dictionary=True para resultados como dicionários
+        query = """
+            SELECT 
+                Aluno.matricula, 
+                Aluno.nome, 
+                Aluno.serie, 
+                AVG(Nota.nota) AS media, 
+                COUNT(Aula.id_aula) AS total_aula, 
+                COUNT(CASE WHEN Presenca.status = 'Presente' THEN Presenca.id_presenca END) AS total_presenca,
+                COUNT(Aula.id_aula) - COUNT(CASE WHEN Presenca.status = 'Presente' THEN Presenca.id_presenca END) AS total_falta,
+                JSON_ARRAYAGG(Ocorrencia.descricao) AS ocorrencias, 
+                JSON_ARRAYAGG(Turma.nome) AS turmas
+            FROM Aluno
+            LEFT JOIN Nota ON Aluno.id_aluno = Nota.fk_Aluno_id_aluno
+            LEFT JOIN Presenca ON Aluno.id_aluno = Presenca.fk_Aluno_id_aluno
+            LEFT JOIN Aula ON Presenca.fk_Aula_id_aula = Aula.id_aula
+            LEFT JOIN Historico_Ocorrencia ON Aluno.id_aluno = Historico_Ocorrencia.fk_Aluno_id_aluno
+            LEFT JOIN Ocorrencia ON Historico_Ocorrencia.fk_Ocorrencia_id_ocorrencia = Ocorrencia.id_ocorrencia
+            LEFT JOIN Turma ON Nota.fk_Turma_id_turma = Turma.id_turma
+            WHERE Aluno.id_aluno = %s
+            GROUP BY Aluno.id_aluno
+        """
+        cur.execute(query, (id_aluno,))
+        resultado = cur.fetchone()
+        cur.close()
+        conn.close()
+
+        if not resultado:
+            return jsonify({'error': 'Aluno não encontrado'}), 404
+        
+        return jsonify(resultado), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 
@@ -1550,6 +1684,306 @@ def login_user():
 @jwt_required()
 def protected():
     return jsonify({"message": "Acesso permitido! Você está autenticado."}), 200
+
+
+
+
+
+@app.route('/setup-database', methods=['POST'])
+def setup_database():
+    try:
+        # Conexão com o banco de dados
+        connection = mysql.connector.connect(
+            host='localhost',
+            user='root',
+            password='master',
+            database='school'
+        )
+        cursor = connection.cursor()
+
+        # SQL Statements
+        sql_commands = [
+            """
+            CREATE TABLE Aluno (
+                id_aluno int PRIMARY KEY AUTO_INCREMENT,
+                nome varchar(255),
+                data_nascimento date,
+                genero enum('Masculino', 'Femenino'),
+                cpf varchar(14) UNIQUE,
+                serie enum('Primeira', 'Segunda', 'Terceira'),
+                matricula varchar(50) UNIQUE,
+                endereco varchar(255),
+                nome_responsavel varchar(255),
+                telefone_responsavel varchar(20),
+                status enum('Ativo', 'Inativo'),
+                fk_Usuario_id_usuario int UNIQUE
+            );
+            """,
+            """
+            CREATE TABLE Professor (
+                id_professor int PRIMARY KEY AUTO_INCREMENT,
+                nome varchar(255),
+                genero enum('Masculino', 'Femenino'),
+                cpf varchar(14) UNIQUE,
+                codigo varchar(50) UNIQUE,
+                email varchar(255) UNIQUE,
+                telefone varchar(20),
+                especialidade varchar(255),
+                endereco varchar(255),
+                status enum('Ativo', 'Inativo'),
+                fk_Usuario_id_usuario int UNIQUE
+            );
+            """,
+                """CREATE TABLE Disciplina (
+                    id_disciplina int PRIMARY KEY AUTO_INCREMENT,
+                    nome_disciplina varchar(255),
+                    codigo varchar(50) UNIQUE,
+                    descricao text,
+                    carga_horaria int
+                );""",
+
+                """CREATE TABLE Aula (
+                    id_aula int PRIMARY KEY AUTO_INCREMENT,
+                    data_aula date,
+                    hora_inicio time,
+                    hora_fim time,
+                    dados text,
+                    fk_Turma_id_turma int
+                );""",
+
+                """CREATE TABLE Presenca (
+                    id_presenca int PRIMARY KEY AUTO_INCREMENT,
+                    status enum('Presente', 'Ausente'),
+                    hora_chegada time,
+                    fk_Aluno_id_aluno int,
+                    fk_Aula_id_aula int
+                );""",
+
+                """CREATE TABLE Ocorrencia (
+                    id_ocorrencia int PRIMARY KEY AUTO_INCREMENT,
+                    descricao text,
+                    tipo varchar(50),
+                    fk_Professor_id_professor int
+                );""",
+
+                """CREATE TABLE Historico_Ocorrencia (
+                    id_historico_ocorrencia int PRIMARY KEY AUTO_INCREMENT,
+                    data_ocorrencia datetime default now(),
+                    fk_Aluno_id_aluno int,
+                    fk_Ocorrencia_id_ocorrencia int UNIQUE
+                );""",
+
+                """CREATE TABLE Usuario (
+                    id_usuario int PRIMARY KEY AUTO_INCREMENT,
+                    nome_usuario varchar(255) UNIQUE,
+                    senha varchar(255),
+                    tipo_usuario enum('Aluno', 'Professor', 'Administrador'),
+                    data_criacao datetime default now()
+                );""",
+
+                """CREATE TABLE Administrador (
+                    id_administrador int PRIMARY KEY AUTO_INCREMENT,
+                    nome varchar(255),
+                    cargo varchar(50),
+                    email varchar(255),
+                    fk_Usuario_id_usuario int UNIQUE
+                );""",
+
+                """CREATE TABLE Turma (
+                    id_turma int PRIMARY KEY AUTO_INCREMENT,
+                    nome varchar(50) UNIQUE,
+                    capacidade int,
+                    serie enum('Primeira', 'Segunda', 'Terceira'),
+                    ano_letivo year,
+                    semestre enum('Primeiro', 'Segundo'),
+                    fk_Professor_id_professor int,
+                    fk_Disciplina_id_disciplina int
+                );""",
+
+                """CREATE TABLE Nota (
+                    id_nota int PRIMARY KEY AUTO_INCREMENT,
+                    nota decimal(3, 1),
+                    fk_Turma_id_turma int,
+                    fk_Aluno_id_aluno int
+                );""",
+                            
+                """ALTER TABLE Aluno ADD CONSTRAINT FK_Aluno_1
+                    FOREIGN KEY (fk_Usuario_id_usuario)
+                    REFERENCES Usuario (id_usuario)
+                    ON DELETE CASCADE;""",
+                
+                """ALTER TABLE Professor ADD CONSTRAINT FK_Professor_1
+                    FOREIGN KEY (fk_Usuario_id_usuario)
+                    REFERENCES Usuario (id_usuario)
+                    ON DELETE CASCADE;""",
+                    
+                """ALTER TABLE Administrador ADD CONSTRAINT FK_Administrador_1
+                    FOREIGN KEY (fk_Usuario_id_usuario)
+                    REFERENCES Usuario (id_usuario)
+                    ON DELETE CASCADE;""",
+                
+                """ALTER TABLE Aula ADD CONSTRAINT FK_Aula_1
+                    FOREIGN KEY (fk_Turma_id_turma)
+                    REFERENCES Turma (id_turma)
+                    ON DELETE CASCADE;""",
+                
+                """ALTER TABLE Presenca ADD CONSTRAINT FK_Presenca_1
+                    FOREIGN KEY (fk_Aluno_id_aluno)
+                    REFERENCES Aluno (id_aluno)
+                    ON DELETE CASCADE;""",
+
+                """ALTER TABLE Presenca ADD CONSTRAINT FK_Presenca_2
+                    FOREIGN KEY (fk_Aula_id_aula)
+                    REFERENCES Aula (id_aula)
+                    ON DELETE CASCADE;""",
+                
+                """ALTER TABLE Ocorrencia ADD CONSTRAINT FK_Ocorrencia_1
+                    FOREIGN KEY (fk_Professor_id_professor)
+                    REFERENCES Professor (id_professor)
+                    ON DELETE CASCADE;""",
+                
+                """ALTER TABLE Historico_Ocorrencia ADD CONSTRAINT FK_Historico_Ocorrencia_1
+                    FOREIGN KEY (fk_Aluno_id_aluno)
+                    REFERENCES Aluno (id_aluno)
+                    ON DELETE CASCADE;""",
+                
+                """ALTER TABLE Historico_Ocorrencia ADD CONSTRAINT FK_Historico_Ocorrencia_2
+                    FOREIGN KEY (fk_Ocorrencia_id_ocorrencia)
+                    REFERENCES Ocorrencia (id_ocorrencia)
+                    ON DELETE CASCADE;""",
+                
+                """ALTER TABLE Turma ADD CONSTRAINT FK_Turma_1
+                    FOREIGN KEY (fk_Professor_id_professor)
+                    REFERENCES Professor (id_professor)
+                    ON DELETE SET NULL;""",
+                    
+                """ALTER TABLE Turma ADD CONSTRAINT FK_Turma_2
+                    FOREIGN KEY (fk_Disciplina_id_disciplina)
+                    REFERENCES Disciplina (id_disciplina)
+                    ON DELETE CASCADE;""",
+                
+                """ALTER TABLE Nota ADD CONSTRAINT FK_Nota_1
+                    FOREIGN KEY (fk_Aluno_id_aluno)
+                    REFERENCES Aluno (id_aluno)
+                    ON DELETE CASCADE;""",
+                    
+                """ALTER TABLE Nota ADD CONSTRAINT FK_Nota_2
+                    FOREIGN KEY (fk_Turma_id_turma)
+                    REFERENCES Turma (id_turma)
+                    ON DELETE CASCADE;""",
+
+
+
+
+                """INSERT INTO Usuario (nome_usuario, senha, tipo_usuario) VALUES
+                ('joao_silva', 'senha1', 'Aluno'),
+                ('ana_souza', 'senha2', 'Aluno'),
+                ('pedro_costa', 'senha3', 'Aluno'),
+                ('mariana_lopes', 'senha4', 'Aluno'),
+                ('carlos_antos', 'senha5', 'Aluno'),
+                ('user1', 'senha1', 'Professor'),
+                ('user2', 'senha2', 'Professor'),
+                ('user3', 'senha3', 'Professor'),
+                ('user4', 'senha4', 'Professor'),
+                ('user5', 'senha5', 'Professor'),
+                ('admin1', 'admin', 'Administrador');""",
+
+                """INSERT INTO Administrador (nome, cargo, email, fk_Usuario_id_usuario) VALUES
+                ('Maria dos Santos', 'Diretora', 'maria@school.com', 11);""",
+
+                """INSERT INTO Aluno (nome, data_nascimento, genero, cpf, serie, matricula, endereco, nome_responsavel, telefone_responsavel, status, fk_Usuario_id_usuario) VALUES
+                ('João Silva', '2005-04-15', 'Masculino', '123.456.789-00', 'Primeira', 'EST001', 'Rua A, 123', 'Maria Silva', '(47) 91234-5678', 'Ativo', 1),
+                ('Ana Souza', '2006-08-20', 'Femenino', '987.654.321-00', 'Segunda', 'EST002', 'Rua B, 456', 'Carlos Souza', '(47) 92345-6789', 'Ativo', 2),
+                ('Pedro Costa', '2005-02-10', 'Masculino', '321.654.987-00', 'Terceira', 'EST003', 'Rua C, 789', 'Fernanda Costa', '(47) 93456-7890', 'Inativo', 3),
+                ('Mariana Lopes', '2007-06-25', 'Femenino', '654.321.987-00', 'Primeira', 'EST004', 'Rua D, 101', 'Paulo Lopes', '(47) 94567-8901', 'Ativo', 4),
+                ('Carlos Santos', '2006-12-01', 'Masculino', '789.123.456-00', 'Segunda', 'EST005', 'Rua E, 202', 'Luciana Santos', '(47) 95678-9012', 'Inativo', 5);""",
+
+                """INSERT INTO Professor (nome, genero, cpf, codigo, email, telefone, especialidade, endereco, status, fk_Usuario_id_usuario) VALUES
+                ('Carlos Oliveira', 'Masculino', '112.334.556-78', 'PROF001', 'carlos@school.com', '(47) 96789-0123', 'Matemática', 'Rua F, 303', 'Ativo', 6),
+                ('Fernanda Alves', 'Femenino', '223.445.667-89', 'PROF002', 'fernanda@school.com', '(47) 97890-1234', 'História', 'Rua G, 404', 'Ativo', 7),
+                ('Joana Pereira', 'Femenino', '334.556.778-90', 'PROF003', 'joana@school.com', '(47) 98901-2345', 'Biologia', 'Rua H, 505', 'Inativo', 8),
+                ('José Dias', 'Masculino', '445.667.889-01', 'PROF004', 'jose@school.com', '(47) 99012-3456', 'Física', 'Rua I, 606', 'Ativo', 9),
+                ('Marcos Lima', 'Masculino', '556.778.990-12', 'PROF005', 'marcos@school.com', '(47) 90123-4567', 'Química', 'Rua J, 707', 'Inativo', 10);""",
+
+
+                """INSERT INTO Disciplina (nome_disciplina, codigo, descricao, carga_horaria) VALUES
+                ('Matemática', 'MAT001', 'Aulas de matemática básica e avançada.', 60),
+                ('História', 'HIS001', 'Estudo dos principais eventos históricos.', 45),
+                ('Biologia', 'BIO001', 'Introdução à biologia e ecossistemas.', 50),
+                ('Física', 'FIS001', 'Leis e princípios da física.', 55),
+                ('Química', 'QUI001', 'Noções de química geral e orgânica.', 50);""",
+
+                """INSERT INTO Turma (nome, capacidade, serie, ano_letivo, semestre, fk_Professor_id_professor, fk_Disciplina_id_disciplina) VALUES
+                ('TURMA24001', 30, 'Primeira', 2024, 'Primeiro', 1, 1),
+                ('TURMA24002', 25, 'Segunda', 2024, 'Primeiro', 2, 2),
+                ('TURMA24003', 20, 'Terceira', 2024, 'Segundo', 3, 3),
+                ('TURMA24004', 35, 'Primeira', 2024, 'Segundo', 4, 4),
+                ('TURMA24005', 40, 'Segunda', 2024, 'Primeiro', 5, 5);""",
+
+                """INSERT INTO Nota (nota, fk_Turma_id_turma, fk_Aluno_id_aluno) VALUES
+                (9.5, 1, 1),
+                (8.0, 2, 2),
+                (7.0, 3, 3),
+                (10.0, 4, 4),
+                (6.5, 5, 5),
+                (9.5, 2, 1),
+                (8.0, 3, 2),
+                (7.0, 1, 3),
+                (10.0, 2, 4),
+                (6.5, 1, 5),
+                (9.5, 2, 5),
+                (8.0, 3, 4),
+                (7.0, 1, 1),
+                (10.0, 2, 3),
+                (6.5, 1, 2);""",
+
+                """INSERT INTO Ocorrencia (descricao, tipo, fk_Professor_id_professor) VALUES
+                ('Aluno chegou atrasado repetidamente.', 'Comportamental', 1),
+                ('Falta de entrega de atividades.', 'Acadêmica', 2),
+                ('Conflito entre alunos em sala de aula.', 'Disciplina', 3),
+                ('Aluno desrespeitou o professor.', 'Comportamental', 4),
+                ('Excelente desempenho em provas.', 'Elogio', 5);""",
+
+                """INSERT INTO Historico_Ocorrencia (fk_Aluno_id_aluno, fk_Ocorrencia_id_ocorrencia) VALUES
+                (1, 1),
+                (1, 2),
+                (3, 3),
+                (4, 4),
+                (5, 5);""",
+
+                """INSERT INTO Aula (data_aula, hora_inicio, hora_fim, dados, fk_Turma_id_turma) VALUES
+                ('2024-11-01', '08:00:00', '09:30:00', 'Introdução ao tema', 1),
+                ('2024-11-02', '10:00:00', '11:30:00', 'Revisão do conteúdo', 2),
+                ('2024-11-03', '13:00:00', '14:30:00', 'Prática em grupo', 3),
+                ('2024-11-04', '15:00:00', '16:30:00', 'Apresentação dos alunos', 1),
+                ('2024-11-05', '17:00:00', '18:30:00', 'Discussão de problemas', 2);""",
+
+                """INSERT INTO Presenca (status, hora_chegada, fk_Aluno_id_aluno, fk_Aula_id_aula) VALUES
+                ('Presente', '08:05:00', 1, 1),
+                ('Ausente', NULL, 2, 1),
+                ('Presente', '10:10:00', 3, 2),
+                ('Presente', '13:15:00', 4, 3),
+                ('Ausente', NULL, 5, 4),
+                ('Presente', '13:15:00', 1, 3),
+                ('Ausente', NULL, 2, 4);""",
+        ]
+
+        for command in sql_commands:
+            cursor.execute(command)
+            connection.commit()
+
+        return jsonify({'message': 'Banco de dados configurado com sucesso!'}), 200
+
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+
+
+
 
 if __name__ == '__main__':
     app.run(host='127.0.0.1', port=5001, debug=True)
