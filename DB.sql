@@ -1,4 +1,4 @@
-/* Lógico_29.11: */
+/* Lógico_01.12: */
 
 CREATE DATABASE school;
 USE school;
@@ -14,6 +14,7 @@ CREATE TABLE Aluno (
     endereco varchar(255),
     nome_responsavel varchar(255),
     telefone_responsavel varchar(20),
+    status enum('Ativo', 'Inativo'),
     fk_Usuario_id_usuario int UNIQUE
 );
 
@@ -23,7 +24,7 @@ CREATE TABLE Professor (
     genero enum('Masculino', 'Femenino'),
     cpf varchar(14) UNIQUE,
     codigo varchar(50) UNIQUE,
-    email varchar(255),
+    email varchar(255) UNIQUE,
     telefone varchar(20),
     especialidade varchar(255),
     endereco varchar(255),
@@ -75,8 +76,7 @@ CREATE TABLE Usuario (
     nome_usuario varchar(255) UNIQUE,
     senha varchar(255),
     tipo_usuario enum('Aluno', 'Professor', 'Administrador'),
-    data_criacao datetime default now(),
-    status enum('Ativo', 'Inativo')
+    data_criacao datetime default now()
 );
 
 CREATE TABLE Administrador (
@@ -108,17 +108,17 @@ CREATE TABLE Nota (
 ALTER TABLE Aluno ADD CONSTRAINT FK_Aluno_1
     FOREIGN KEY (fk_Usuario_id_usuario)
     REFERENCES Usuario (id_usuario)
-    ON DELETE RESTRICT;
+    ON DELETE CASCADE;
  
 ALTER TABLE Professor ADD CONSTRAINT FK_Professor_1
     FOREIGN KEY (fk_Usuario_id_usuario)
     REFERENCES Usuario (id_usuario)
-    ON DELETE RESTRICT;
+    ON DELETE CASCADE;
     
 ALTER TABLE Administrador ADD CONSTRAINT FK_Administrador_1
     FOREIGN KEY (fk_Usuario_id_usuario)
     REFERENCES Usuario (id_usuario)
-	ON DELETE RESTRICT;
+	ON DELETE CASCADE;
  
 ALTER TABLE Aula ADD CONSTRAINT FK_Aula_1
     FOREIGN KEY (fk_Turma_id_turma)
@@ -128,22 +128,22 @@ ALTER TABLE Aula ADD CONSTRAINT FK_Aula_1
 ALTER TABLE Presenca ADD CONSTRAINT FK_Presenca_1
     FOREIGN KEY (fk_Aluno_id_aluno)
     REFERENCES Aluno (id_aluno)
-    ON DELETE RESTRICT;
+    ON DELETE CASCADE;
 
 ALTER TABLE Presenca ADD CONSTRAINT FK_Presenca_2
     FOREIGN KEY (fk_Aula_id_aula)
     REFERENCES Aula (id_aula)
-    ON DELETE RESTRICT;
+    ON DELETE CASCADE;
  
 ALTER TABLE Ocorrencia ADD CONSTRAINT FK_Ocorrencia_1
     FOREIGN KEY (fk_Professor_id_professor)
     REFERENCES Professor (id_professor)
-    ON DELETE RESTRICT;
+    ON DELETE CASCADE;
  
 ALTER TABLE Historico_Ocorrencia ADD CONSTRAINT FK_Historico_Ocorrencia_1
     FOREIGN KEY (fk_Aluno_id_aluno)
     REFERENCES Aluno (id_aluno)
-	ON DELETE RESTRICT;
+	ON DELETE CASCADE;
  
 ALTER TABLE Historico_Ocorrencia ADD CONSTRAINT FK_Historico_Ocorrencia_2
     FOREIGN KEY (fk_Ocorrencia_id_ocorrencia)
@@ -169,8 +169,6 @@ ALTER TABLE Nota ADD CONSTRAINT FK_Nota_2
     FOREIGN KEY (fk_Turma_id_turma)
     REFERENCES Turma (id_turma)
     ON DELETE CASCADE;
-
-
 --------------------------------------------------------------------------------------
 SELECT 
     Aluno.matricula, 
