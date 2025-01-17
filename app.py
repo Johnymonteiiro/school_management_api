@@ -1610,10 +1610,10 @@ def setup_database():
     try:
         # Conexão com o banco de dados
         connection = mysql.connector.connect(
-            host='localhost',
-            user='root',
-            password='master',
-            database='school'
+            host=os.getenv("HOST"),
+            user=os.getenv("USER_NAME"),
+            password=os.getenv("PASSWORD"),
+            database=os.getenv("DATABASE_NAME")
         )
         cursor = connection.cursor()
 
@@ -1903,10 +1903,10 @@ def drop_tables():
     try:
         # Conexão com o banco de dados
         connection = mysql.connector.connect(
-            host='localhost',
-            user='root',
-            password='master',
-            database='school'
+            host=os.getenv("HOST"),
+            user=os.getenv("USER_NAME"),
+            password=os.getenv("PASSWORD"),
+            database=os.getenv("DATABASE_NAME")
         )
         cursor = connection.cursor()
 
@@ -1939,7 +1939,5 @@ def drop_tables():
 
 
 
-
-
 if __name__ == '__main__':
-    app.run(host='127.0.0.1', port=5001, debug=True)
+    app.run(host='127.0.0.1', port=os.getenv("PORT"), debug=False)
