@@ -1,0 +1,10 @@
+HOST="",
+USER_NAME="",
+PASSWORD="",
+DATABASE_NAME=""
+
+
+ host="localhost",
+        user="root",
+        password="master",
+        database="school"

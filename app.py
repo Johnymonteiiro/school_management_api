@@ -1,9 +1,13 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_bcrypt import Bcrypt
-from flask_jwt_extended import JWTManager, create_access_token, jwt_required
+from flask_jwt_extended import JWTManager,jwt_required
 import mysql.connector
 import datetime
+import os
+from dotenv import load_dotenv
+
+load_dotenv(dotenv_path=".env")
 
 app = Flask(__name__)
 CORS(app)
@@ -11,13 +15,13 @@ app.config['JWT_SECRET_KEY'] = 'sua-chave-secreta'  # Troque por uma chave segur
 bcrypt = Bcrypt(app)
 jwt = JWTManager(app)
 
-# Função para conectar ao banco de dados
+# Função para conectar ao banco de dados  
 def get_db_connection():
     return mysql.connector.connect(
-        host="localhost",
-        user="root",
-        password="master",
-        database="school"
+        host=os.getenv("HOST"),
+        user=os.getenv("USER_NAME"),
+        password=os.getenv("PASSWORD"),
+        database=os.getenv("DATABASE_NAME")
     )
 
 # Rota para obter todos os alunos
