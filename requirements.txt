@@ -7,3 +7,4 @@ mysql-connector-python==9.1.0
 flask_jwt_extended==4.7.1
 flask_bcrypt==1.0.1
 python-dotenv==1.0.1
+gunicorn==23.0.0
