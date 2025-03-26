@@ -1940,4 +1940,4 @@ def drop_tables():
 
 
 if __name__ == '__main__':
-    app.run()
+    app.run(debug=True)
